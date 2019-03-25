@@ -1,10 +1,25 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const bcrypt = require('bcrypt');
+const cors = require('cors');
+const knex = require('knex');
+
+const postgres = knex({
+    client: 'pg',
+    connection: {
+        host: '127.0.0.1',
+        user: 'postgres',
+        password: 'cassidy2468-',
+        database: 'smartbrain'
+    }
+});
+
+console.log(postgres.select('*').from('users'));
 
 const app = express();
 
 app.use(bodyParser.json());   //
+app.use(cors());
 
 const database = {
     users: [
@@ -33,32 +48,30 @@ app.get('/', (req, res) => {
 
 app.post('/signin', (req, res) => {
     if (req.body.email === database.users[0].email && req.body.password === database.users[0].password) {
-        res.json('Success');
+        res.json(database.users[0]);
     } else {
         res.status(400).json('error logging in');
     }
 })
 
 app.post('/register', (req, res) => {
-    const { email, name, password} = req.body;
-
+    const { email, name } = req.body;
     database.users.push({
         id: '125',
         name: name,
         email: email,
-        password: password,
         entries: 0,
         joined: new Date()
     })
 
-    res.json(database.users[database.users.length-1]);
+    res.json(database.users[database.users.length - 1]);
 })
 
 app.get('/profile/:id', (req, res) => {
     const { id } = req.params;
     let found = false;
-    database.users.forEach( user => {
-        if(user.id === id) {
+    database.users.forEach(user => {
+        if (user.id === id) {
             found = true;
             res.json(user);
         }
@@ -72,8 +85,8 @@ app.get('/profile/:id', (req, res) => {
 app.put('/image', (req, res) => {
     const { id } = req.body;
     let found = false;
-    database.users.forEach( user => {
-        if(user.id === id) {
+    database.users.forEach(user => {
+        if (user.id === id) {
             found = true;
             user.entries++;
             return res.json(user.entries);
@@ -83,9 +96,9 @@ app.put('/image', (req, res) => {
     if (!found) {
         res.status(400).json('Not Found');
     }
-})    
-    
-app.listen(3000, ()=> {
+})
+
+app.listen(3999, () => {
     console.log('app is running on port 3000');
 })
 
