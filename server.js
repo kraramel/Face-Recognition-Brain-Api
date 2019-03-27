@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const bcrypt = require('bcrypt');
+const saltRounds = 10;
 const cors = require('cors');
 const knex = require('knex');
 
@@ -55,18 +56,32 @@ app.post('/signin', (req, res) => {
 })
 
 app.post('/register', (req, res) => {
-    const { email, name } = req.body;
-    db('users')
-        .returning('*')
-        .insert({
-            email: email,
-            name: name,
-            joined: new Date()
+    const { email, name, password } = req.body;
+    const hash = bcrypt.hashSync(password, saltRounds);
+    
+    db.transaction(trx => {
+        trx.insert({
+            hash: hash,
+            email: email
         })
-        .then(user => {
-            res.json(user[0]);
-        })
-        .catch(err => res.status(400).json('unable to register'))
+            .into('login')
+            .returning('email')
+            .then(loginEmail => {
+                return trx('users')
+                    .returning('*')
+                    .insert({
+                        email: loginEmail[0],
+                        name: name,
+                        joined: new Date()
+                    })
+                    .then(user => {
+                        res.json(user[0]);
+                    })
+            })
+            .then(trx.commit)
+            .catch(trx.rollback)
+    })
+        .catch(err => res.status(400).json('error getting the user'))
 })
 
 app.get('/profile/:id', (req, res) => {
@@ -90,12 +105,12 @@ app.put('/image', (req, res) => {
     const { id } = req.body;
     let found = false;
     db('users').where('id', '=', id)
-    .increment('entries', 1)        
-    .returning('entries')
-    .then(entries => {
-        res.json(entries[0]);
-    })
-    .catch( err => res.status(400).json('unable to get entries'))
+        .increment('entries', 1)
+        .returning('entries')
+        .then(entries => {
+            res.json(entries[0]);
+        })
+        .catch(err => res.status(400).json('unable to get entries'))
 })
 
 app.listen(3999, () => {
